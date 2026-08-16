@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface Complaint {
   id: string;
@@ -22,9 +24,11 @@ interface Complaint {
 }
 
 export default function Dashboard() {
+  const pathname = usePathname();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchComplaints();
@@ -34,7 +38,6 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError("");
-
       const response = await fetch("/api/complaints");
 
       if (!response.ok) {
@@ -48,29 +51,23 @@ export default function Dashboard() {
       } else {
         throw new Error(data.error || "Failed to fetch complaints");
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setError("Unable to load complaints");
     } finally {
       setLoading(false);
     }
   }
 
-  async function updateComplaintStatus(
-    complaintId: string,
-    status: string
-  ) {
+  async function updateComplaintStatus(complaintId: string, status: string) {
     try {
-      const response = await fetch(
-        `/api/complaints/${complaintId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status }),
-        }
-      );
+      const response = await fetch(`/api/complaints/${complaintId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
 
       const data = await response.json();
 
@@ -80,40 +77,22 @@ export default function Dashboard() {
 
       setComplaints((prev) =>
         prev.map((complaint) =>
-          complaint.id === complaintId
-            ? { ...complaint, status }
-            : complaint
+          complaint.id === complaintId ? { ...complaint, status } : complaint
         )
       );
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       alert("Failed to update status");
     }
   }
 
   const totalReports = complaints.length;
-
   const criticalReports = complaints.filter(
     (c) => c.priorityLevel === "critical"
   ).length;
-
-  const highPriority = complaints.filter(
-    (c) =>
-      c.priorityLevel === "high" ||
-      c.priorityLevel === "critical"
-  ).length;
-
-  const openReports = complaints.filter(
-    (c) => c.status === "open"
-  ).length;
-
-  const inProgress = complaints.filter(
-    (c) => c.status === "in_progress"
-  ).length;
-
-  const resolvedReports = complaints.filter(
-    (c) => c.status === "resolved"
-  ).length;
+  const openReports = complaints.filter((c) => c.status === "open").length;
+  const inProgress = complaints.filter((c) => c.status === "in_progress").length;
+  const resolvedReports = complaints.filter((c) => c.status === "resolved").length;
 
   function formatWasteType(type: string) {
     return type
@@ -121,447 +100,307 @@ export default function Dashboard() {
       .replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
-  function formatStatus(status: string) {
-    if (status === "in_progress") return "In Progress";
-
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  }
-
   function getPriorityStyle(priority: string) {
     switch (priority) {
       case "critical":
-        return "bg-red-50 text-red-700 border-red-200";
-
+        return "bg-red-100 text-red-700 border-red-200";
       case "high":
-        return "bg-orange-50 text-orange-700 border-orange-200";
-
+        return "bg-orange-100 text-orange-700 border-orange-200";
       case "medium":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
-
+        return "bg-yellow-100 text-yellow-700 border-yellow-200";
       default:
-        return "bg-green-50 text-green-700 border-green-200";
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
     }
   }
 
   function getStatusStyle(status: string) {
     switch (status) {
       case "resolved":
-        return "bg-green-50 text-green-700 border-green-200";
-
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
       case "in_progress":
         return "bg-blue-50 text-blue-700 border-blue-200";
-
       default:
-        return "bg-orange-50 text-orange-700 border-orange-200";
+        return "bg-amber-50 text-amber-700 border-amber-200";
     }
   }
 
+  const navItems = [
+    { label: "Dashboard", href: "/dashboard", icon: "📊" },
+    { label: "Complaints", href: "/complaints", icon: "🗑️" },
+    { label: "Map View", href: "/locations", icon: "📍" },
+    { label: "Analytics", href: "/analytics", icon: "📈" },
+    { label: "Reports", href: "/report", icon: "📄" },
+  ];
+
   return (
-    <main className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-[#F4F6F8] font-sans text-slate-800">
+      {/* MOBILE OVERLAY */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* SIDEBAR */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-64 bg-white shadow-lg lg:block">
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-screen w-64 flex-col justify-between bg-[#0F2228] text-slate-300 transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        <div className="overflow-y-auto px-4 py-5">
+          {/* LOGO */}
+          <div className="mb-6 flex items-center justify-between px-3">
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-xl font-bold text-white shadow-md">
+                🌿
+              </div>
+              <div>
+                <h1 className="text-lg font-bold leading-tight text-white">
+                  SwachhLens
+                </h1>
+                <p className="text-xs text-slate-400">Municipal Dashboard</p>
+              </div>
+            </Link>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="text-slate-400 hover:text-white lg:hidden"
+            >
+              ✕
+            </button>
+          </div>
 
-        <div className="flex h-20 items-center border-b px-6">
-          <div>
-            <h1 className="text-xl font-bold text-green-700">
-              🌿 SwachhLens
-            </h1>
+          {/* SIDEBAR NAVIGATION */}
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  <span className="text-base">{item.icon}</span> {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
-            <p className="text-xs text-gray-500">
-              Smart Waste Management
+        {/* SIDEBAR FOOTER CARD */}
+        <div className="border-t border-slate-800 p-4">
+          <div className="rounded-xl border border-slate-700/50 bg-[#14323B] p-3.5 text-xs text-slate-300">
+            <p className="font-semibold text-white">Swachh City, Our Duty</p>
+            <p className="mt-1 text-slate-400">
+              Let&apos;s build a cleaner and healthier tomorrow.
             </p>
           </div>
         </div>
-
-        <nav className="p-4">
-
-          <div className="rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
-            📊 Dashboard
-          </div>
-
-          <div className="mt-2 rounded-xl px-4 py-3 text-sm text-gray-600 hover:bg-gray-50">
-            🗑️ Complaints
-          </div>
-
-          <div className="mt-2 rounded-xl px-4 py-3 text-sm text-gray-600 hover:bg-gray-50">
-            📍 Locations
-          </div>
-
-          <div className="mt-2 rounded-xl px-4 py-3 text-sm text-gray-600 hover:bg-gray-50">
-            📈 Analytics
-          </div>
-
-        </nav>
-
-        <div className="absolute bottom-0 w-full border-t p-5">
-          <p className="text-xs text-gray-400">
-            Municipal Control Center
-          </p>
-
-          <p className="mt-1 text-sm font-semibold text-gray-700">
-            Admin Dashboard
-          </p>
-        </div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <section className="lg:ml-64">
-
+      {/* MAIN CONTENT WRAPPER */}
+      <div className="flex min-h-screen flex-col lg:ml-64">
         {/* TOP BAR */}
-        <header className="border-b bg-white px-6 py-5 lg:px-8">
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+              aria-label="Open sidebar"
+            >
+              ☰
+            </button>
             <div>
-              <p className="text-sm font-medium text-green-600">
-                MUNICIPAL CONTROL CENTER
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold text-gray-900">
-                Waste Management Dashboard
+              <h2 className="text-xl font-bold leading-snug text-slate-900">
+                Welcome, Municipal Officer
               </h2>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Monitor, prioritize and resolve citizen waste complaints.
+              <p className="hidden text-xs text-slate-500 sm:block">
+                Monitor and manage waste issues across the city
               </p>
             </div>
+          </div>
 
+          <div className="flex items-center gap-3">
             <button
               onClick={fetchComplaints}
-              className="rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
             >
               ↻ Refresh Data
             </button>
-
+            <div className="hidden items-center gap-2 border-l border-slate-200 pl-4 sm:flex">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-700">
+                OA
+              </div>
+              <div className="text-xs">
+                <p className="font-semibold text-slate-800">Officer Admin</p>
+                <p className="text-slate-400">Municipal Corp</p>
+              </div>
+            </div>
           </div>
-
         </header>
 
-        <div className="p-6 lg:p-8">
-
-          {/* ERROR */}
+        {/* CONTENT AREA */}
+        <main className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
           {error && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>
           )}
 
           {/* STAT CARDS */}
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
-
-            {/* TOTAL */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Total Reports
-                  </p>
-
-                  <p className="mt-2 text-3xl font-bold text-gray-900">
-                    {loading ? "..." : totalReports}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-green-50 p-3 text-xl">
-                  📋
-                </div>
-
-              </div>
-            </div>
-
-            {/* CRITICAL */}
-            <div className="rounded-2xl border border-red-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Critical
-                  </p>
-
-                  <p className="mt-2 text-3xl font-bold text-red-600">
-                    {loading ? "..." : criticalReports}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-red-50 p-3 text-xl">
-                  🚨
-                </div>
-
-              </div>
-            </div>
-
-            {/* HIGH */}
-            <div className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-
-                <div>
-                  <p className="text-sm text-gray-500">
-                    High Priority
-                  </p>
-
-                  <p className="mt-2 text-3xl font-bold text-orange-600">
-                    {loading ? "..." : highPriority}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-orange-50 p-3 text-xl">
-                  ⚠️
-                </div>
-
-              </div>
-            </div>
-
-            {/* OPEN */}
-            <div className="rounded-2xl border border-yellow-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Open
-                  </p>
-
-                  <p className="mt-2 text-3xl font-bold text-yellow-600">
-                    {loading ? "..." : openReports}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-yellow-50 p-3 text-xl">
-                  🕐
-                </div>
-
-              </div>
-            </div>
-
-            {/* RESOLVED */}
-            <div className="rounded-2xl border border-green-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-
-                <div>
-                  <p className="text-sm text-gray-500">
-                    Resolved
-                  </p>
-
-                  <p className="mt-2 text-3xl font-bold text-green-600">
-                    {loading ? "..." : resolvedReports}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-green-50 p-3 text-xl">
-                  ✓
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-
-          {/* QUICK SUMMARY */}
-          <div className="mt-6 grid gap-5 md:grid-cols-3">
-
-            <div className="rounded-2xl bg-gradient-to-r from-green-600 to-green-500 p-6 text-white shadow-sm">
-              <p className="text-sm text-green-100">
-                Resolution Progress
-              </p>
-
-              <p className="mt-2 text-3xl font-bold">
-                {totalReports
-                  ? Math.round(
-                      (resolvedReports / totalReports) * 100
-                    )
-                  : 0}
-                %
-              </p>
-
-              <div className="mt-4 h-2 rounded-full bg-green-400">
-                <div
-                  className="h-2 rounded-full bg-white"
-                  style={{
-                    width: `${
-                      totalReports
-                        ? (resolvedReports / totalReports) * 100
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <p className="text-sm text-gray-500">
-                In Progress
-              </p>
-
-              <p className="mt-2 text-3xl font-bold text-blue-600">
-                {loading ? "..." : inProgress}
-              </p>
-
-              <p className="mt-2 text-sm text-gray-500">
-                Complaints currently being handled
-              </p>
-            </div>
-
-            <div className="rounded-2xl border bg-white p-6 shadow-sm">
-              <p className="text-sm text-gray-500">
-                Critical Attention
-              </p>
-
-              <p className="mt-2 text-3xl font-bold text-red-600">
-                {loading ? "..." : criticalReports}
-              </p>
-
-              <p className="mt-2 text-sm text-gray-500">
-                Require immediate municipal action
-              </p>
-            </div>
-
-          </div>
-
-          {/* COMPLAINT TABLE */}
-          <div className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-
-            <div className="flex flex-col gap-3 border-b px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">
-                  Waste Complaints
-                </h3>
+                <p className="text-xs font-medium text-slate-500">Total Complaints</p>
+                <p className="mt-1 text-2xl font-extrabold text-slate-900">
+                  {loading ? "..." : totalReports}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100 text-xl text-emerald-700">
+                📋
+              </div>
+            </div>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  Latest complaints received from citizens
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div>
+                <p className="text-xs font-medium text-slate-500">Open Complaints</p>
+                <p className="mt-1 text-2xl font-extrabold text-amber-600">
+                  {loading ? "..." : openReports}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-100 text-xl text-amber-700">
+                ⚠️
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div>
+                <p className="text-xs font-medium text-slate-500">In Progress</p>
+                <p className="mt-1 text-2xl font-extrabold text-blue-600">
+                  {loading ? "..." : inProgress}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100 text-xl text-blue-700">
+                👷
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div>
+                <p className="text-xs font-medium text-slate-500">Resolved</p>
+                <p className="mt-1 text-2xl font-extrabold text-emerald-600">
+                  {loading ? "..." : resolvedReports}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100 text-xl text-emerald-700">
+                ✓
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div>
+                <p className="text-xs font-medium text-slate-500">Critical Priority</p>
+                <p className="mt-1 text-2xl font-extrabold text-red-600">
+                  {loading ? "..." : criticalReports}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-100 text-xl text-red-700">
+                🚨
+              </div>
+            </div>
+          </div>
+
+          {/* TABLE CONTAINER */}
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Recent Complaints
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Live data feed of reported issues across municipal sectors
                 </p>
               </div>
 
-              <div className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-600">
-                {totalReports} Reports
-              </div>
-
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {totalReports} Total Reports
+              </span>
             </div>
 
             {loading ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-12 text-center text-sm text-slate-500">
                 Loading complaints...
               </div>
             ) : complaints.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-12 text-center text-sm text-slate-500">
                 No complaints found.
               </div>
             ) : (
-
               <div className="overflow-x-auto">
-
-                <table className="w-full min-w-[1100px]">
-
-                  <thead className="bg-slate-50">
-
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-
-                      <th className="px-6 py-4">
-                        Waste Issue
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Priority
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Score
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Location
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Status
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Reports
-                      </th>
-
-                      <th className="px-6 py-4">
-                        Date
-                      </th>
-
+                <table className="w-full min-w-[900px] text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50/50 text-xs font-semibold uppercase text-slate-500">
+                    <tr>
+                      <th className="px-6 py-3.5">Waste Issue</th>
+                      <th className="px-6 py-3.5">Priority</th>
+                      <th className="px-6 py-3.5">Score</th>
+                      <th className="px-6 py-3.5">Coordinates</th>
+                      <th className="px-6 py-3.5">Status Action</th>
+                      <th className="px-6 py-3.5">Reports</th>
+                      <th className="px-6 py-3.5">Date</th>
                     </tr>
-
                   </thead>
 
-                  <tbody className="divide-y divide-gray-100">
-
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
                     {complaints.map((complaint) => (
-
                       <tr
                         key={complaint.id}
-                        className="transition hover:bg-gray-50"
+                        className="transition hover:bg-slate-50/80"
                       >
-
-                        {/* WASTE */}
-                        <td className="px-6 py-5">
-
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 font-bold text-emerald-700">
                               🗑️
                             </div>
-
                             <div>
-
-                              <p className="font-semibold text-gray-900">
-                                {formatWasteType(
-                                  complaint.wasteType
-                                )}
+                              <p className="font-semibold text-slate-900">
+                                {formatWasteType(complaint.wasteType)}
                               </p>
-
-                              <p className="text-sm text-gray-500">
-                                {formatWasteType(
-                                  complaint.sizeCategory
-                                )} volume
+                              <p className="text-xs text-slate-400">
+                                {formatWasteType(complaint.sizeCategory)} Volume
                               </p>
-
                             </div>
-
                           </div>
-
                         </td>
 
-                        {/* PRIORITY */}
-                        <td className="px-6 py-5">
-
+                        <td className="px-6 py-4">
                           <span
-                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${getPriorityStyle(
+                            className={`inline-block rounded-full border px-2.5 py-1 text-xs font-semibold ${getPriorityStyle(
                               complaint.priorityLevel
                             )}`}
                           >
-                            {formatWasteType(
-                              complaint.priorityLevel
-                            )}
+                            {formatWasteType(complaint.priorityLevel)}
                           </span>
-
                         </td>
 
-                        {/* SCORE */}
-                        <td className="px-6 py-5">
-
-                          <div className="font-bold text-gray-900">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900">
                             {complaint.priorityScore}
-                            <span className="font-normal text-gray-400">
+                            <span className="text-xs font-normal text-slate-400">
                               {" "}
                               / 100
                             </span>
                           </div>
-
-                          <div className="mt-2 h-1.5 w-20 rounded-full bg-gray-200">
-
+                          <div className="mt-1.5 h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
                             <div
-                              className={`h-1.5 rounded-full ${
-                                complaint.priorityLevel ===
-                                "critical"
+                              className={`h-full ${
+                                complaint.priorityLevel === "critical"
                                   ? "bg-red-500"
-                                  : complaint.priorityLevel ===
-                                    "high"
+                                  : complaint.priorityLevel === "high"
                                   ? "bg-orange-500"
                                   : "bg-yellow-500"
                               }`}
@@ -572,27 +411,16 @@ export default function Dashboard() {
                                 )}%`,
                               }}
                             />
-
                           </div>
-
                         </td>
 
-                        {/* LOCATION */}
-                        <td className="px-6 py-5">
-
-                          <p className="text-sm font-medium text-gray-700">
-                            📍 {complaint.lat.toFixed(5)}
+                        <td className="px-6 py-4">
+                          <p className="text-xs font-medium text-slate-700">
+                            📍 {complaint.lat.toFixed(4)}, {complaint.lng.toFixed(4)}
                           </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            {complaint.lng.toFixed(5)}
-                          </p>
-
                         </td>
 
-                        {/* STATUS */}
-                        <td className="px-6 py-5">
-
+                        <td className="px-6 py-4">
                           <select
                             value={complaint.status}
                             onChange={(e) =>
@@ -601,69 +429,41 @@ export default function Dashboard() {
                                 e.target.value
                               )
                             }
-                            className={`rounded-lg border px-3 py-2 text-xs font-semibold outline-none ${getStatusStyle(
+                            className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none transition ${getStatusStyle(
                               complaint.status
                             )}`}
                           >
-
-                            <option value="open">
-                              Open
-                            </option>
-
-                            <option value="in_progress">
-                              In Progress
-                            </option>
-
-                            <option value="resolved">
-                              Resolved
-                            </option>
-
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
                           </select>
-
                         </td>
 
-                        {/* REPORTS */}
-                        <td className="px-6 py-5">
-
-                          <p className="font-semibold text-gray-900">
-                            {complaint.reportCount}
-                          </p>
-
-                          {complaint.isDuplicate && (
-                            <span className="text-xs font-medium text-blue-600">
-                              Duplicate
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">
+                              {complaint.reportCount}
                             </span>
-                          )}
-
+                            {complaint.isDuplicate && (
+                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600">
+                                Duplicate
+                              </span>
+                            )}
+                          </div>
                         </td>
 
-                        {/* DATE */}
-                        <td className="whitespace-nowrap px-6 py-5 text-sm text-gray-500">
-
-                          {new Date(
-                            complaint.createdAt
-                          ).toLocaleString()}
-
+                        <td className="whitespace-nowrap px-6 py-4 text-xs text-slate-500">
+                          {new Date(complaint.createdAt).toLocaleString()}
                         </td>
-
                       </tr>
-
                     ))}
-
                   </tbody>
-
                 </table>
-
               </div>
-
             )}
-
           </div>
-
-        </div>
-
-      </section>
-
-    </main>
+        </main>
+      </div>
+    </div>
   );
 }
