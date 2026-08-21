@@ -35,7 +35,6 @@ export default function RegisterPage() {
 
     setError("");
 
-    // Basic validation
     if (!name.trim()) {
       setError("Please enter your name.");
       return;
@@ -61,7 +60,6 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
-      // Create Firebase Authentication account
       const userCredential =
         await createUserWithEmailAndPassword(
           auth,
@@ -71,14 +69,10 @@ export default function RegisterPage() {
 
       const user = userCredential.user;
 
-      // Store user's display name
       await updateProfile(user, {
         displayName: name.trim(),
       });
 
-      // Create user profile in Firestore
-      // IMPORTANT:
-      // Public registration always creates a normal user.
       await setDoc(doc(firestore, "users", user.uid), {
         uid: user.uid,
         name: name.trim(),
@@ -87,7 +81,6 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
       });
 
-      // Redirect normal users to reporting page
       router.replace("/report");
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -124,7 +117,6 @@ export default function RegisterPage() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4 py-8">
       <div className="w-full max-w-md">
 
-        {/* LOGO / HEADER */}
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-700 text-3xl shadow-lg">
             ♻️
@@ -139,7 +131,6 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* REGISTER CARD */}
         <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xl sm:p-8">
 
           <div className="mb-6">
@@ -152,7 +143,6 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {/* ERROR */}
           {error && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
