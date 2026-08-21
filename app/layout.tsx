@@ -4,7 +4,7 @@ import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
   title: "SwachhLens",
-  description: "Smart Waste Reporting System",
+  description: "Smart waste reporting system",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-full flex flex-col bg-[#F4F6F8]">
+      <body className="min-h-screen">
         <AuthProvider>
           {children}
         </AuthProvider>

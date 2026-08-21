@@ -19,10 +19,7 @@ import {
   getDoc,
 } from "firebase/firestore";
 
-import {
-  auth,
-  firestore,
-} from "@/lib/firebase";
+import { auth, firestore } from "@/lib/firebase";
 
 type UserRole = "user" | "admin";
 
@@ -34,82 +31,78 @@ interface AuthContextType {
 }
 
 const AuthContext =
-  createContext<AuthContextType | undefined>(
-    undefined
-  );
+  createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [user, setUser] =
-    useState<User | null>(null);
-
-  const [role, setRole] =
-    useState<UserRole | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe =
-      onAuthStateChanged(
-        auth,
-        async (currentUser) => {
-          try {
-            setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (currentUser) => {
+        try {
+          setUser(currentUser);
 
-            if (!currentUser) {
-              setRole(null);
-              setLoading(false);
-              return;
-            }
+          if (!currentUser) {
+            setRole(null);
+            setLoading(false);
+            return;
+          }
 
-            const userRef = doc(
-              firestore,
-              "users",
-              currentUser.uid
-            );
+          const userRef = doc(
+            firestore,
+            "users",
+            currentUser.uid
+          );
 
-            const userSnapshot =
-              await getDoc(userRef);
+          const userSnapshot = await getDoc(userRef);
 
-            if (!userSnapshot.exists()) {
-              setRole(null);
-              setLoading(false);
-              return;
-            }
-
-            const userData =
-              userSnapshot.data();
-
-            if (
-              userData.role === "user" ||
-              userData.role === "admin"
-            ) {
-              setRole(userData.role);
-            } else {
-              setRole(null);
-            }
-          } catch (error) {
-            console.error(
-              "Error loading authentication data:",
-              error
-            );
+          if (!userSnapshot.exists()) {
+            console.error("User document does not exist.");
 
             setRole(null);
-          } finally {
             setLoading(false);
+            return;
           }
+
+          const userData = userSnapshot.data();
+
+          if (
+            userData.role === "user" ||
+            userData.role === "admin"
+          ) {
+            setRole(userData.role);
+          } else {
+            console.error("Invalid user role:", userData.role);
+            setRole(null);
+          }
+
+        } catch (error) {
+          console.error(
+            "Error loading authentication data:",
+            error
+          );
+
+          setRole(null);
+        } finally {
+          setLoading(false);
         }
-      );
+      }
+    );
 
     return () => unsubscribe();
   }, []);
 
   const logout = async () => {
     await signOut(auth);
+    setUser(null);
+    setRole(null);
   };
 
   return (
@@ -127,8 +120,7 @@ export function AuthProvider({
 }
 
 export function useAuth() {
-  const context =
-    useContext(AuthContext);
+  const context = useContext(AuthContext);
 
   if (!context) {
     throw new Error(
