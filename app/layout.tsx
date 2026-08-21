@@ -1,35 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-
-import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "SwachhLens",
-  description: "Smart Municipal Waste Reporting Platform",
+  description: "Smart Waste Reporting System",
 };
 
 export default function RootLayout({
   children,
-}: LayoutProps<"/">) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en">
+      <body className="min-h-full flex flex-col bg-[#F4F6F8]">
         <AuthProvider>
           {children}
         </AuthProvider>
