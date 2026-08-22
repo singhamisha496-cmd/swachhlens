@@ -54,7 +54,7 @@ export default function Dashboard() {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/complaints");
+      const response = await fetch("/api/dashboard/complaints");
 
       if (!response.ok) {
         throw new Error("Failed to fetch complaints");

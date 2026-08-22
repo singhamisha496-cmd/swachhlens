@@ -16,11 +16,12 @@ import {
 } from "firebase/firestore";
 
 import { auth, firestore } from "@/lib/firebase";
-
+const VALID_ADMIN_ID = "ADMIN001";
 export default function RegisterPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [role, setRole] = useState<"user" | "admin">("user");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,11 +40,15 @@ export default function RegisterPage() {
       setError("Please enter your name.");
       return;
     }
-
+   
     if (!email.trim()) {
       setError("Please enter your email.");
       return;
     }
+    if (role === "admin" && email.trim() !== VALID_ADMIN_ID) {
+  setError("Invalid Admin ID.");
+  return;
+}
 
     if (password.length < 6) {
       setError(
@@ -60,10 +65,15 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
+      const authEmail =
+  role === "admin"
+    ? `${email.trim().toLowerCase()}@swachhlens.local`
+    : email.trim().toLowerCase();
+
       const userCredential =
         await createUserWithEmailAndPassword(
           auth,
-          email.trim(),
+          authEmail,
           password
         );
 
@@ -73,15 +83,17 @@ export default function RegisterPage() {
         displayName: name.trim(),
       });
 
-      await setDoc(doc(firestore, "users", user.uid), {
-        uid: user.uid,
-        name: name.trim(),
-        email: user.email,
-        role: "user",
-        createdAt: serverTimestamp(),
-      });
-
-      router.replace("/report");
+     
+await setDoc(doc(firestore, "users", user.uid), {
+  email: role === "admin" ? email.trim() : email.trim().toLowerCase(),
+  role: role,
+  createdAt: new Date().toISOString(),
+});
+      if (role === "admin") {
+  router.replace("/dashboard");
+} else {
+  router.replace("/report");
+}
     } catch (error: any) {
       console.error("Registration error:", error);
 
@@ -168,7 +180,7 @@ export default function RegisterPage() {
                 htmlFor="name"
                 className="mb-2 block text-sm font-semibold text-gray-700"
               >
-                Role
+                Name
               </label>
 
               <input
@@ -184,23 +196,47 @@ export default function RegisterPage() {
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
               />
             </div>
+<div>
+  <label
+    htmlFor="role"
+    className="mb-2 block text-sm font-semibold text-gray-700"
+  >
+    Register As
+  </label>
 
+  <select
+    id="role"
+    value={role}
+    onChange={(e) =>
+      setRole(e.target.value as "user" | "admin")
+    }
+    disabled={loading}
+    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+  >
+    <option value="user">User</option>
+    <option value="admin">Admin</option>
+  </select>
+</div>
             <div>
               <label
                 htmlFor="email"
                 className="mb-2 block text-sm font-semibold text-gray-700"
               >
-                Email Address
+                  {role === "admin" ? "Admin ID" : "Email Address"}
               </label>
 
               <input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) =>
                   setEmail(e.target.value)
                 }
-                placeholder="Enter your email"
+                placeholder={
+  role === "admin"
+    ? "Enter your Admin ID"
+    : "Enter your email"
+}
                 autoComplete="email"
                 disabled={loading}
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"

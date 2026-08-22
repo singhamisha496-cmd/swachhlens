@@ -56,41 +56,45 @@ export function AuthProvider({
           }
 
           const userRef = doc(
-            firestore,
-            "users",
-            currentUser.uid
-          );
+  firestore,
+  "users",
+  currentUser.uid
+);
 
-          const userSnapshot = await getDoc(userRef);
+let userSnapshot = await getDoc(userRef);
 
-          if (!userSnapshot.exists()) {
-            console.error("User document does not exist.");
+if (!userSnapshot.exists()) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  userSnapshot = await getDoc(userRef);
+}
 
-            setRole(null);
-            setLoading(false);
-            return;
-          }
+if (!userSnapshot.exists()) {
+  console.error(
+    "User document does not exist for UID:",
+    currentUser.uid
+  );
 
-          const userData = userSnapshot.data();
+  setRole(null);
+  setLoading(false);
+  return;
+}
 
-          if (
-            userData.role === "user" ||
-            userData.role === "admin"
-          ) {
-            setRole(userData.role);
-          } else {
-            console.error("Invalid user role:", userData.role);
-            setRole(null);
-          }
+const userData = userSnapshot.data();
 
-        } catch (error) {
-          console.error(
-            "Error loading authentication data:",
-            error
-          );
-
-          setRole(null);
-        } finally {
+if (
+  userData.role === "user" ||
+  userData.role === "admin"
+) {
+  setRole(userData.role);
+} else {
+  console.error(
+    "Invalid user role:",
+    userData.role
+  );
+  setRole(null);
+}
+          
+}finally {
           setLoading(false);
         }
       }

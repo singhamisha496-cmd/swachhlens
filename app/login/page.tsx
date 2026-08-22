@@ -11,10 +11,12 @@ import {
 import { auth } from "@/lib/firebase";
 
 export default function LoginPage() {
+  const VALID_ADMIN_ID = "ADMIN001";
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"user" | "admin">("user");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,6 +32,10 @@ export default function LoginPage() {
       setError("Please enter your email.");
       return;
     }
+ if (role === "admin" && email.trim() !== VALID_ADMIN_ID) {
+  setError("Invalid Admin ID.");
+  return;
+}
 
     if (!password) {
       setError("Please enter your password.");
@@ -39,10 +45,15 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
+      const authEmail =
+  role === "admin"
+    ? `${email.trim().toLowerCase()}@swachhlens.local`
+    : email.trim().toLowerCase();
+
       const userCredential =
         await signInWithEmailAndPassword(
           auth,
-          email.trim(),
+            authEmail,
           password
         );
 
@@ -177,6 +188,29 @@ export default function LoginPage() {
             onSubmit={handleLogin}
             className="mt-6 space-y-5"
           >
+            {/* ROLE */}
+
+<div>
+  <label
+    htmlFor="role"
+    className="mb-2 block text-sm font-semibold text-gray-700"
+  >
+    Login As
+  </label>
+
+  <select
+    id="role"
+    value={role}
+    onChange={(e) =>
+      setRole(e.target.value as "user" | "admin")
+    }
+    disabled={loading}
+    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
+  >
+    <option value="user">User</option>
+    <option value="admin">Admin</option>
+  </select>
+</div>
 
             {/* EMAIL */}
 
@@ -186,17 +220,21 @@ export default function LoginPage() {
                 htmlFor="email"
                 className="mb-2 block text-sm font-semibold text-gray-700"
               >
-                Email Address
+                 {role === "admin" ? "Admin ID" : "Email Address"}
               </label>
 
               <input
                 id="email"
-                type="email"
+                type={role === "admin" ? "text" : "email"}
                 value={email}
                 onChange={(e) =>
                   setEmail(e.target.value)
                 }
-                placeholder="Enter your email"
+              placeholder={
+  role === "admin"
+    ? "Enter your Admin ID"
+    : "Enter your email"
+}
                 autoComplete="email"
                 disabled={loading}
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-green-600 focus:ring-2 focus:ring-green-100 disabled:bg-gray-100"
