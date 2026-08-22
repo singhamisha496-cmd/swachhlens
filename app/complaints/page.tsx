@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { auth } from "@/lib/firebase";
 
 interface Complaint {
   id: string;
@@ -36,22 +37,37 @@ export default function ComplaintsPage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/dashboard/complaints");
+      const user = auth.currentUser;
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch complaints");
+      if (!user) {
+        throw new Error("Please login first.");
       }
+
+      const token = await user.getIdToken();
+
+      const response = await fetch("/api/dashboard/complaints", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to fetch complaints");
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error || "Failed to fetch complaints"
+        );
       }
 
       setComplaints(data.complaints || []);
     } catch (err) {
       console.error("Complaints error:", err);
-      setError("Unable to load complaints");
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load complaints"
+      );
     } finally {
       setLoading(false);
     }
@@ -146,8 +162,6 @@ export default function ComplaintsPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F8] text-slate-800">
 
-      {/* HEADER */}
-
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-8">
 
         <div>
@@ -181,19 +195,13 @@ export default function ComplaintsPage() {
 
       </header>
 
-      {/* CONTENT */}
-
       <main className="space-y-6 p-4 sm:p-6 lg:p-8">
-
-        {/* ERROR */}
 
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
-
-        {/* STATISTICS */}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -238,8 +246,6 @@ export default function ComplaintsPage() {
           </div>
 
         </div>
-
-        {/* TABLE */}
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
@@ -290,33 +296,13 @@ export default function ComplaintsPage() {
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
 
                   <tr>
-                    <th className="px-6 py-4">
-                      Waste Issue
-                    </th>
-
-                    <th className="px-6 py-4">
-                      Priority
-                    </th>
-
-                    <th className="px-6 py-4">
-                      Score
-                    </th>
-
-                    <th className="px-6 py-4">
-                      Location
-                    </th>
-
-                    <th className="px-6 py-4">
-                      Status
-                    </th>
-
-                    <th className="px-6 py-4">
-                      Reports
-                    </th>
-
-                    <th className="px-6 py-4">
-                      Date
-                    </th>
+                    <th className="px-6 py-4">Waste Issue</th>
+                    <th className="px-6 py-4">Priority</th>
+                    <th className="px-6 py-4">Score</th>
+                    <th className="px-6 py-4">Location</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Reports</th>
+                    <th className="px-6 py-4">Date</th>
                   </tr>
 
                 </thead>
@@ -329,8 +315,6 @@ export default function ComplaintsPage() {
                       key={complaint.id}
                       className="transition hover:bg-slate-50"
                     >
-
-                      {/* WASTE */}
 
                       <td className="px-6 py-4">
 
@@ -356,8 +340,6 @@ export default function ComplaintsPage() {
 
                       </td>
 
-                      {/* PRIORITY */}
-
                       <td className="px-6 py-4">
 
                         <span
@@ -369,8 +351,6 @@ export default function ComplaintsPage() {
                         </span>
 
                       </td>
-
-                      {/* SCORE */}
 
                       <td className="px-6 py-4">
 
@@ -400,8 +380,6 @@ export default function ComplaintsPage() {
 
                       </td>
 
-                      {/* LOCATION */}
-
                       <td className="px-6 py-4">
 
                         <p className="text-xs font-medium text-slate-700">
@@ -413,8 +391,6 @@ export default function ComplaintsPage() {
                         </p>
 
                       </td>
-
-                      {/* STATUS */}
 
                       <td className="px-6 py-4">
 
@@ -431,9 +407,7 @@ export default function ComplaintsPage() {
                           )}`}
                         >
 
-                          <option value="open">
-                            Open
-                          </option>
+                          <option value="open">Open</option>
 
                           <option value="in_progress">
                             In Progress
@@ -446,8 +420,6 @@ export default function ComplaintsPage() {
                         </select>
 
                       </td>
-
-                      {/* REPORTS */}
 
                       <td className="px-6 py-4">
 
@@ -466,8 +438,6 @@ export default function ComplaintsPage() {
                         </div>
 
                       </td>
-
-                      {/* DATE */}
 
                       <td className="whitespace-nowrap px-6 py-4 text-xs text-slate-500">
 

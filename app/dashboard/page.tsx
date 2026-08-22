@@ -32,6 +32,7 @@ export default function Dashboard() {
   const {
     user,
     role,
+    loading: authLoading,
     logout,
   } = useAuth();
 
@@ -42,36 +43,70 @@ export default function Dashboard() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   // ==========================================
+  // ADMIN ACCESS PROTECTION
+  // ==========================================
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!authLoading && user && role !== "admin") {
+      router.replace("/");
+    }
+  }, [authLoading, user, role, router]);
+
+  // ==========================================
   // FETCH COMPLAINTS
   // ==========================================
 
   useEffect(() => {
-    fetchComplaints();
-  }, []);
+    if (!authLoading && user && role === "admin") {
+      fetchComplaints();
+    }
+  }, [authLoading, user, role]);
 
   async function fetchComplaints() {
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch("/api/dashboard/complaints");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch complaints");
+      if (!user) {
+        setError("You must be logged in.");
+        return;
       }
+
+      const token = await user.getIdToken();
+
+      const response = await fetch(
+        "/api/dashboard/complaints",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      );
 
       const data = await response.json();
 
-      if (data.success) {
-        setComplaints(data.complaints || []);
-      } else {
+      if (!response.ok || !data.success) {
         throw new Error(
           data.error || "Failed to fetch complaints"
         );
       }
+
+      setComplaints(data.complaints || []);
     } catch (err) {
-      console.error(err);
-      setError("Unable to load complaints");
+      console.error("Dashboard fetch error:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load complaints"
+      );
     } finally {
       setLoading(false);
     }
@@ -91,9 +126,7 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Logout error:", error);
 
-      alert(
-        "Unable to logout. Please try again."
-      );
+      alert("Unable to logout. Please try again.");
 
       setLoggingOut(false);
     }
@@ -108,12 +141,20 @@ export default function Dashboard() {
     status: string
   ) {
     try {
+      if (!user) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      const token = await user.getIdToken();
+
       const response = await fetch(
         `/api/complaints/${complaintId}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             status,
@@ -123,7 +164,7 @@ export default function Dashboard() {
 
       const data = await response.json();
 
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         throw new Error(
           data.error || "Failed to update status"
         );
@@ -140,10 +181,12 @@ export default function Dashboard() {
         )
       );
     } catch (err) {
-      console.error(err);
+      console.error("Status update error:", err);
 
       alert(
-        "Failed to update complaint status."
+        err instanceof Error
+          ? err.message
+          : "Failed to update complaint status."
       );
     }
   }
@@ -171,7 +214,7 @@ export default function Dashboard() {
   ).length;
 
   // ==========================================
-  // FORMAT WASTE TYPE
+  // FORMAT TEXT
   // ==========================================
 
   function formatWasteType(type: string) {
@@ -252,15 +295,71 @@ export default function Dashboard() {
   ];
 
   // ==========================================
+  // AUTH LOADING
+  // ==========================================
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F4F6F8]">
+        <div className="text-center">
+          <div className="text-4xl">🌿</div>
+
+          <p className="mt-3 text-sm font-semibold text-slate-600">
+            Checking authentication...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // NOT LOGGED IN
+  // ==========================================
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F4F6F8]">
+        <div className="text-center">
+          <div className="text-4xl">🔐</div>
+
+          <p className="mt-3 text-sm font-semibold text-slate-700">
+            Redirecting to login...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // NOT ADMIN
+  // ==========================================
+
+  if (role !== "admin") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F4F6F8]">
+        <div className="text-center">
+          <div className="text-4xl">🔒</div>
+
+          <p className="mt-3 text-sm font-semibold text-slate-700">
+            Admin access required.
+          </p>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Redirecting...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
   // PAGE
   // ==========================================
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] font-sans text-slate-800">
 
-      {/* ====================================== */}
       {/* MOBILE OVERLAY */}
-      {/* ====================================== */}
 
       {isSidebarOpen && (
         <div
@@ -271,9 +370,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* ====================================== */}
       {/* SIDEBAR */}
-      {/* ====================================== */}
 
       <aside
         className={`fixed left-0 top-0 z-50 flex h-screen w-64 flex-col justify-between bg-[#0F2228] text-slate-300 transition-transform duration-300 ease-in-out ${
@@ -295,13 +392,11 @@ export default function Dashboard() {
               href="/dashboard"
               className="flex items-center gap-3"
             >
-
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-xl font-bold text-white shadow-md">
                 🌿
               </div>
 
               <div>
-
                 <h1 className="text-lg font-bold leading-tight text-white">
                   SwachhLens
                 </h1>
@@ -309,9 +404,7 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-400">
                   Municipal Dashboard
                 </p>
-
               </div>
-
             </Link>
 
             <button
@@ -330,7 +423,6 @@ export default function Dashboard() {
           <nav className="space-y-1">
 
             {navItems.map((item) => {
-
               const isActive =
                 pathname === item.href;
 
@@ -347,13 +439,11 @@ export default function Dashboard() {
                       : "text-slate-300 hover:bg-slate-800 hover:text-white"
                   }`}
                 >
-
                   <span className="text-base">
                     {item.icon}
                   </span>
 
                   {item.label}
-
                 </Link>
               );
             })}
@@ -362,9 +452,7 @@ export default function Dashboard() {
 
         </div>
 
-        {/* ==================================== */}
         {/* SIDEBAR FOOTER */}
-        {/* ==================================== */}
 
         <div className="border-t border-slate-800 p-4">
 
@@ -384,19 +472,15 @@ export default function Dashboard() {
 
       </aside>
 
-      {/* ====================================== */}
       {/* MAIN CONTENT */}
-      {/* ====================================== */}
 
       <div className="flex min-h-screen flex-col lg:ml-64">
 
-        {/* ==================================== */}
         {/* TOP BAR */}
-        {/* ==================================== */}
 
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:px-8">
 
-          {/* LEFT SIDE */}
+          {/* LEFT */}
 
           <div className="flex items-center gap-3">
 
@@ -411,7 +495,6 @@ export default function Dashboard() {
             </button>
 
             <div>
-
               <h2 className="text-xl font-bold leading-snug text-slate-900">
                 Welcome, Municipal Officer
               </h2>
@@ -419,12 +502,11 @@ export default function Dashboard() {
               <p className="hidden text-xs text-slate-500 sm:block">
                 Monitor and manage waste issues across the city
               </p>
-
             </div>
 
           </div>
 
-          {/* RIGHT SIDE */}
+          {/* RIGHT */}
 
           <div className="flex items-center gap-3">
 
@@ -443,7 +525,7 @@ export default function Dashboard() {
             <div className="hidden items-center gap-2 border-l border-slate-200 pl-4 sm:flex">
 
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-700">
-                {user?.email
+                {user.email
                   ? user.email
                       .charAt(0)
                       .toUpperCase()
@@ -453,13 +535,11 @@ export default function Dashboard() {
               <div className="text-xs">
 
                 <p className="max-w-[180px] truncate font-semibold text-slate-800">
-                  {user?.email || "Admin"}
+                  {user.email || "Admin"}
                 </p>
 
                 <p className="text-slate-400">
-                  {role === "admin"
-                    ? "Municipal Admin"
-                    : "Administrator"}
+                  Municipal Admin
                 </p>
 
               </div>
@@ -482,9 +562,7 @@ export default function Dashboard() {
 
         </header>
 
-        {/* ==================================== */}
         {/* CONTENT */}
-        {/* ==================================== */}
 
         <main className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
 
@@ -496,9 +574,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ================================= */}
           {/* STAT CARDS */}
-          {/* ================================= */}
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
 
@@ -507,7 +583,6 @@ export default function Dashboard() {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
               <div>
-
                 <p className="text-xs font-medium text-slate-500">
                   Total Complaints
                 </p>
@@ -517,7 +592,6 @@ export default function Dashboard() {
                     ? "..."
                     : totalReports}
                 </p>
-
               </div>
 
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100 text-xl text-emerald-700">
@@ -531,7 +605,6 @@ export default function Dashboard() {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
               <div>
-
                 <p className="text-xs font-medium text-slate-500">
                   Open Complaints
                 </p>
@@ -541,7 +614,6 @@ export default function Dashboard() {
                     ? "..."
                     : openReports}
                 </p>
-
               </div>
 
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-100 text-xl text-amber-700">
@@ -555,7 +627,6 @@ export default function Dashboard() {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
               <div>
-
                 <p className="text-xs font-medium text-slate-500">
                   In Progress
                 </p>
@@ -565,7 +636,6 @@ export default function Dashboard() {
                     ? "..."
                     : inProgress}
                 </p>
-
               </div>
 
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-100 text-xl text-blue-700">
@@ -579,7 +649,6 @@ export default function Dashboard() {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
               <div>
-
                 <p className="text-xs font-medium text-slate-500">
                   Resolved
                 </p>
@@ -589,7 +658,6 @@ export default function Dashboard() {
                     ? "..."
                     : resolvedReports}
                 </p>
-
               </div>
 
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-100 text-xl text-emerald-700">
@@ -603,7 +671,6 @@ export default function Dashboard() {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
               <div>
-
                 <p className="text-xs font-medium text-slate-500">
                   Critical Priority
                 </p>
@@ -613,7 +680,6 @@ export default function Dashboard() {
                     ? "..."
                     : criticalReports}
                 </p>
-
               </div>
 
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-100 text-xl text-red-700">
@@ -624,9 +690,7 @@ export default function Dashboard() {
 
           </div>
 
-          {/* ================================= */}
           {/* COMPLAINT TABLE */}
-          {/* ================================= */}
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
@@ -635,7 +699,6 @@ export default function Dashboard() {
             <div className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
 
               <div>
-
                 <h3 className="text-lg font-bold text-slate-900">
                   Recent Complaints
                 </h3>
@@ -643,7 +706,6 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-500">
                   Live data feed of reported issues across municipal sectors
                 </p>
-
               </div>
 
               <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -662,15 +724,11 @@ export default function Dashboard() {
 
             ) : complaints.length === 0 ? (
 
-              /* EMPTY */
-
               <div className="p-12 text-center text-sm text-slate-500">
                 No complaints found.
               </div>
 
             ) : (
-
-              /* TABLE */
 
               <div className="overflow-x-auto">
 
@@ -802,7 +860,7 @@ export default function Dashboard() {
                                 style={{
                                   width: `${Math.min(
                                     Math.max(
-                                      complaint.priorityScore,
+                                      complaint.priorityScore || 0,
                                       0
                                     ),
                                     100
@@ -820,13 +878,13 @@ export default function Dashboard() {
 
                             <p className="text-xs font-medium text-slate-700">
                               📍{" "}
-                              {complaint.lat.toFixed(
-                                4
-                              )}
+                              {Number(
+                                complaint.lat
+                              ).toFixed(4)}
                               ,{" "}
-                              {complaint.lng.toFixed(
-                                4
-                              )}
+                              {Number(
+                                complaint.lng
+                              ).toFixed(4)}
                             </p>
 
                           </td>
@@ -873,7 +931,7 @@ export default function Dashboard() {
                             <div className="flex items-center gap-2">
 
                               <span className="font-semibold text-slate-900">
-                                {complaint.reportCount}
+                                {complaint.reportCount ?? 0}
                               </span>
 
                               {complaint.isDuplicate && (
@@ -890,9 +948,11 @@ export default function Dashboard() {
 
                           <td className="whitespace-nowrap px-6 py-4 text-xs text-slate-500">
 
-                            {new Date(
-                              complaint.createdAt
-                            ).toLocaleString()}
+                            {complaint.createdAt
+                              ? new Date(
+                                  complaint.createdAt
+                                ).toLocaleString()
+                              : "N/A"}
 
                           </td>
 
